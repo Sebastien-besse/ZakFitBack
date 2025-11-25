@@ -39,6 +39,8 @@ final class Food: Model, Content, @unchecked Sendable{
     @Siblings(through: MealFood.self, from: \.$food, to: \.$meal)
     var meals: [Meal]
     
+    
+    //Constructeur
     init() {}
     
     init(id: UUID? = nil, foodName: String, calories: Int, proteins: Int, carbs: Int, lipids: Int, userID: UUID) {
