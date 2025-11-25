@@ -56,6 +56,6 @@ final class Meal: Model, Content, @unchecked Sendable{
         self.totalProteins = totalProteins
         self.totalCarbs = totalCarbs
         self.totalLipids = totalLipids
-        self.user.id = userID
+        self.$user.id = userID
     }
 }
