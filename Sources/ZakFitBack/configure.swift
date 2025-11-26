@@ -15,16 +15,28 @@ public func configure(_ app: Application) async throws {
         password: Environment.get("DATABASE_PASSWORD") ?? "",
         database: Environment.get("DATABASE_NAME") ?? "zakfit_db"
     ), as: .mysql)
+    
+    
+    let jsonDecoder = JSONDecoder()
+    jsonDecoder.dateDecodingStrategy = .formatted({
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd-MM-yyyy"
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter
+    }())
+
+    ContentConfiguration.global.use(decoder: jsonDecoder, for: .json)
 
     app.migrations.add(CreateTodo())
     
-        let corsConfiguration = CORSMiddleware.Configuration(
-            allowedOrigin: .custom("http://127.0.0.1:5500"),
-            allowedMethods: [.GET, .POST, .PUT, .DELETE, .OPTIONS],
-            allowedHeaders: [.accept, .authorization, .contentType, .origin],
-            cacheExpiration: 120
-        )
+//        let corsConfiguration = CORSMiddleware.Configuration(
+//            allowedOrigin: .custom("http://127.0.0.1:5500"),
+//            allowedMethods: [.GET, .POST, .PUT, .DELETE, .OPTIONS],
+//            allowedHeaders: [.accept, .authorization, .contentType, .origin],
+//            cacheExpiration: 120
+//        )
 
     // register routes
+   
     try routes(app)
 }
