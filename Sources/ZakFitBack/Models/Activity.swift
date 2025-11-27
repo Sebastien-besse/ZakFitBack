@@ -24,10 +24,10 @@ final class Activity: Model, Content, @unchecked Sendable{
     var dureActivity: Int
     
     @Field(key: "calories_burned")
-    var caloriesBurned: Int?
+    var caloriesBurned: Int
     
-    @Timestamp(key: "date_activity", on: .create)
-    var dateActivity: Date?
+    @Field(key: "date_activity")
+    var dateActivity: Date
     
     // Relation
     @Parent(key: "user_id")
@@ -36,11 +36,12 @@ final class Activity: Model, Content, @unchecked Sendable{
     // Constructeur
     init(){}
     
-    init(id: UUID? = nil, activityName: String, dureActivity: Int, caloriesBurned: Int, userID: UUID) {
+    init(id: UUID? = nil, activityName: String, dureActivity: Int, caloriesBurned: Int, dateActivity: Date, userID: UUID) {
         self.id = id
         self.activityName = activityName
         self.dureActivity = dureActivity
         self.caloriesBurned = caloriesBurned
+        self.dateActivity = dateActivity
         self.$user.id = userID
     }
 }

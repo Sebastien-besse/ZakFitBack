@@ -175,7 +175,7 @@ struct UserController: RouteCollection{
         //Supprime l’utilisateur
         try await user.delete(on: req.db)
         
-        return .noContent
+        return .ok
     }
     
     

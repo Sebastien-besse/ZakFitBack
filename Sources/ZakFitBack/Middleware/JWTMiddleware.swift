@@ -9,14 +9,14 @@
 import Vapor
 import JWT
 
-// Middleware/JWTMiddleware.swift
+
 final class JWTMiddleware: Middleware {
     func respond(to request: Request, chainingTo next: any Responder) -> EventLoopFuture<Response> {
         // Vérifiez l'en-tête Authorization pour obtenir le token JWT
         guard let token = request.headers["Authorization"].first?.split(separator: " ").last else {
             return request.eventLoop.future(error: Abort(.unauthorized, reason: "Missing token. "))
         }
-        let signer = JWTSigner.hs256(key: "clé_secrète_Zakfit") // Remplacez par une clé secrète
+        let signer = JWTSigner.hs256(key: "clé_secrète_Zakfit")
         let payload: UserPayload
         do {
             // Vérifiez le token et récupérez le payload
