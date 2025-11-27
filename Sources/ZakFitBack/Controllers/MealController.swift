@@ -165,5 +165,4 @@ struct MealController:  RouteCollection{
         return try MealResponseDTO(from: meal, foods: mealFoods)
     }
     
-    
 }

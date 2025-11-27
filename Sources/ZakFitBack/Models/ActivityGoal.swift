@@ -21,9 +21,6 @@ final class ActivityGoal: Model, Content, @unchecked Sendable{
     @Field(key: "type_activity")
     var typeActivity: String
     
-    @Field(key: "dure_activity")
-    var durationActivity: Int
-    
     @Field(key: "training_frequency")
     var trainingFrequency: Int
     
@@ -41,10 +38,9 @@ final class ActivityGoal: Model, Content, @unchecked Sendable{
     //Constructeur
     init() {}
     
-    init(id: UUID? = nil, typeActivity: String, durationActivity: Int, trainingFrequency: Int, caloriesBurned: Int, durationOfSessions: Int, userID: UUID) {
+    init(id: UUID? = nil, typeActivity: String, trainingFrequency: Int, caloriesBurned: Int, durationOfSessions: Int, userID: UUID) {
         self.id = id
         self.typeActivity = typeActivity
-        self.durationActivity = durationActivity
         self.trainingFrequency = trainingFrequency
         self.caloriesBurned = caloriesBurned
         self.durationOfSessions = durationOfSessions
