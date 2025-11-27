@@ -49,6 +49,15 @@ final class Meal: Model, Content, @unchecked Sendable{
     
     init() {}
     
+    init(typeMeal: String, userID: UUID) {
+        self.typeMeal = typeMeal
+        self.totalCalories = 0
+        self.totalProteins = 0
+        self.totalCarbs = 0
+        self.totalLipids = 0
+        self.$user.id = userID
+    }
+    
     init(id: UUID? = nil, typeMeal: String, totalCalories: Int, totalProteins: Int, totalCarbs: Int, totalLipids: Int, userID: UUID){
         self.id = id
         self.typeMeal = typeMeal
