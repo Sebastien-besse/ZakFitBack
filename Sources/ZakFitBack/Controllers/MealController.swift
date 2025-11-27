@@ -48,25 +48,55 @@ struct MealController:  RouteCollection{
     func getMeals(req: Request) async throws -> [MealResponseDTO] {
         let payload = try req.auth.require(UserPayload.self)
 
+        // Démarrer la requête filtrée par userID
         var query = Meal.query(on: req.db)
-            .filter(\Meal.$user.$id == payload.id)
+            .filter(\.$user.$id == payload.id)
 
+        // Filtrer par date si fourni (yyyy-MM-dd)
         if let dateString = req.query[String.self, at: "date"] {
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd"
-
             if let date = formatter.date(from: dateString) {
                 let calendar = Calendar.current
                 let start = calendar.startOfDay(for: date)
                 let end = calendar.date(byAdding: .day, value: 1, to: start)!
+                query = query.filter(\.$dateMeal >= start)
+                             .filter(\.$dateMeal < end)
+            }
+        }
 
-                query = query.filter(\Meal.$dateMeal >= start)
-                             .filter(\Meal.$dateMeal < end)
+        // Filtrer par type de repas si fourni
+        if let type = req.query[String.self, at: "type"] {
+            query = query.filter(\.$typeMeal == type)
+        }
+
+        // Appliquer tri si demandé
+        if let sort = req.query[String.self, at: "sort"] {
+            switch sort.lowercased() {
+            case "date":
+                query = query.sort(\.$dateMeal, .descending)
+            case "type":
+                query = query.sort(\.$typeMeal, .ascending)
+            case "calories":
+                query = query.sort(\.$totalCalories, .descending)
+            default:
+                break
             }
         }
 
         let meals = try await query.all()
-        return meals.map { MealResponseDTO(from: $0) }
+
+        // Pour chaque repas, récupérer les MealFood associés
+        var result: [MealResponseDTO] = []
+        for meal in meals {
+            let mealFoods = try await MealFood.query(on: req.db)
+                .filter(\.$meal.$id == meal.requireID())
+                .with(\.$food)
+                .all()
+            result.append(try MealResponseDTO(from: meal, foods: mealFoods))
+        }
+
+        return result
     }
     
     
