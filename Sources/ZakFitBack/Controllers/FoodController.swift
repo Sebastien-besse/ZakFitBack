@@ -15,6 +15,7 @@ struct FoodController: RouteCollection {
         protected.get("foods", use: getAllFoods)
     }
 
+    // Creation d'un aliment
     @Sendable
     func createFood(req: Request) async throws -> Food {
         let payload = try req.auth.require(UserPayload.self)
@@ -31,6 +32,7 @@ struct FoodController: RouteCollection {
         return food
     }
 
+    // récupération de tout les aliments
     @Sendable
     func getAllFoods(req: Request) async throws -> [Food] {
         try await Food.query(on: req.db).all()

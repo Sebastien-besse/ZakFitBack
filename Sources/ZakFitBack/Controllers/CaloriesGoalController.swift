@@ -43,7 +43,7 @@ struct CaloriesGoalController: RouteCollection {
         guard let goal = try await CaloriesGoal.query(on: req.db)
                 .filter(\.$user.$id == payload.id)
                 .first() else {
-            throw Abort(.notFound, reason: "No nutrition goal found for this user.")
+            throw Abort(.notFound, reason: "Aucun objectif nutritionnel trouvé pour cet utilisateur")
         }
         return try CaloriesGoalResponseDTO(from: goal)
     }
@@ -53,18 +53,20 @@ struct CaloriesGoalController: RouteCollection {
     func updateCaloriesGoal(req: Request) async throws -> CaloriesGoalResponseDTO {
         let payload = try req.auth.require(UserPayload.self)
         guard let goalID = req.parameters.get("id", as: UUID.self) else {
-            throw Abort(.badRequest, reason: "Invalid goal ID")
+            throw Abort(.badRequest, reason: "L'id de l'objectif est invalide")
         }
         
         guard let goal = try await CaloriesGoal.find(goalID, on: req.db) else {
-            throw Abort(.notFound, reason: "Goal not found")
+            throw Abort(.notFound, reason: "Objectif non trouvé")
         }
         
         guard goal.$user.id == payload.id else {
-            throw Abort(.forbidden, reason: "Cannot modify another user's goal")
+            throw Abort(.forbidden, reason: "Ne peut pas modifier l’objectif d’un autre utilisateur")
         }
         
+        // Décodage du body JSON envoyé côté client
         let data = try req.content.decode(CaloriesGoalDTO.self)
+        
         goal.caloriesGoal = data.caloriesGoal
         goal.proteinsGoal = data.proteinsGoal
         goal.carbsGoal = data.carbsGoal

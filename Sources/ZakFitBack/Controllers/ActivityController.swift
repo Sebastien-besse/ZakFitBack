@@ -46,15 +46,16 @@ struct ActivityController: RouteCollection{
     
 
     //MARK: Récupération de tout les activités de l'utilisateur
+    // MARK: Récupération de toutes les activités de l'utilisateur
     @Sendable
     func getActivities(req: Request) async throws -> [ActivityResponse] {
         let payload = try req.auth.require(UserPayload.self)
-        
-        // Préparer le calendrier UTC une seule fois
+
+        // Préparer le calendrier UTC
         var utcCalendar = Calendar(identifier: .gregorian)
         utcCalendar.timeZone = TimeZone(secondsFromGMT: 0)!
 
-        // Début de la requête filtrée par userID
+        // Base de la requête filtrée par utilisateur
         var query = Activity.query(on: req.db)
             .filter(\.$user.$id == payload.id)
 
@@ -69,15 +70,19 @@ struct ActivityController: RouteCollection{
             query = query.filter(\.$dureActivity <= maxDuration)
         }
 
-        // MARK: - Filtres par dates
-        if let start = req.query[QueryDate.self, at: "startDate"] {
-            let startOfDay = utcCalendar.startOfDay(for: start.date)
+        // MARK: - Filtre date début (format unique dd-MM-yyyy)
+        if let startString = req.query[String.self, at: "startDate"],
+           let startDate = DateUtils.defaultFormatter.date(from: startString) {
+
+            let startOfDay = utcCalendar.startOfDay(for: startDate)
             query = query.filter(\.$dateActivity >= startOfDay)
         }
 
-        if let end = req.query[QueryDate.self, at: "endDate"] {
-            // Fin de journée UTC
-            if let endOfDay = utcCalendar.date(bySettingHour: 23, minute: 59, second: 59, of: end.date) {
+        // MARK: - Filtre date fin (format unique dd-MM-yyyy)
+        if let endString = req.query[String.self, at: "endDate"],
+           let endDate = DateUtils.defaultFormatter.date(from: endString) {
+
+            if let endOfDay = utcCalendar.date(bySettingHour: 23, minute: 59, second: 59, of: endDate) {
                 query = query.filter(\.$dateActivity <= endOfDay)
             }
         }
@@ -87,33 +92,19 @@ struct ActivityController: RouteCollection{
             switch sort.lowercased() {
             case "date":
                 query = query.sort(\.$dateActivity, .descending)
+
             case "type":
                 query = query.sort(\.$activityName, .ascending)
+
             case "duration":
                 query = query.sort(\.$dureActivity, .descending)
-            default:
-                break
+
+            default: break
             }
         }
 
-        // MARK: - Exécution
         let activities = try await query.all()
         return try activities.map { try ActivityResponse(from: $0) }
-    }
-
-    
-    
-    //MARK: Récupére un utilisateur par son ID depuis le payload
-    @Sendable
-    func getUserById(req: Request) async throws -> UserResponse {
-        // Essaye d'extraire le payload JWT de la requête
-        let payload = try req.auth.require(UserPayload.self)
-        // Recherche l'utilisateur dans la base de données en utilisant l'ID extrait du payload
-        guard let user = try await User.find(payload.id, on: req.db) else {
-            throw Abort (.notFound)
-        }
-        // Convertit l'utilisateur en DTO pour ne retourner que les informations nécessaires
-        return try UserResponse(from: user)
     }
     
     
@@ -136,7 +127,7 @@ struct ActivityController: RouteCollection{
             throw Abort(.forbidden, reason: "You are not allowed to modify this activity.")
         }
 
-        // Décodage du body JSON
+        // Décodage du body JSON envoyé côté client
         let data = try req.content.decode(UpdateActivityDTO.self)
 
         // MARK: - Mise à jour des champs optionnels
@@ -145,7 +136,7 @@ struct ActivityController: RouteCollection{
         }
 
         if let duration = data.duration {
-            guard duration > 0 else { throw Abort(.badRequest, reason: "Duration must be greater than 0.") }
+            guard duration > 0 else { throw Abort(.badRequest, reason: "La durée doit être supérieure à 0") }
             activity.dureActivity = duration
         }
 
@@ -153,12 +144,14 @@ struct ActivityController: RouteCollection{
             activity.dateActivity = date
         }
 
-        // Calories : soit fournies soit recalculées
+        // Calories : si elle sont fournies soit recalculées
         if let calories = data.caloriesBurned {
-            guard calories >= 0 else { throw Abort(.badRequest, reason: "Calories cannot be negative.") }
+            guard calories >= 0 else {
+                throw Abort(.badRequest, reason: "Les calories ne peuvent pas être négatives")
+            }
             activity.caloriesBurned = calories
         } else {
-            // Recalcul si type ou durée ont changé
+            // Recalcul si le type ou la durée ont changé
             activity.caloriesBurned = ActivityDTO(
                 type: activity.activityName,
                 duration: activity.dureActivity,
@@ -179,20 +172,20 @@ struct ActivityController: RouteCollection{
         let payload = try req.auth.require(UserPayload.self)
 
         guard let activityID = req.parameters.get("id", as: UUID.self) else {
-            throw Abort(.badRequest, reason: "Invalid activity ID format.")
+            throw Abort(.badRequest, reason: "Format d’ID d’activité invalide")
         }
 
         // Récupérer l'activité
         guard let activity = try await Activity.find(activityID, on: req.db) else {
-            throw Abort(.notFound, reason: "l'activité n'existe pas.")
+            throw Abort(.notFound, reason: "l'activité n'existe pas")
         }
 
         // Vérifier l'autorisation de l'utilisateur
         guard activity.$user.id == payload.id else {
-            throw Abort(.forbidden, reason: "You cannot delete this activity.")
+            throw Abort(.forbidden, reason: "Vous ne pouvez pas supprimer cette activité.")
         }
 
-        // Supprimer
+        // Supprime l'activité
         try await activity.delete(on: req.db)
         return .ok
     }

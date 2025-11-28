@@ -18,27 +18,28 @@ struct HistoryController: RouteCollection {
         protected.get("month-summary", use: getMonthSummary)
     }
 
-    // MARK: - DAILY
+    // MARK: - Historique d'une journée
     @Sendable
     func getDailyHistory(req: Request) async throws -> DailyHistoryDTO {
         let payload = try req.auth.require(UserPayload.self)
-
+        
+        // Vérification du paramètre date (format dd-MM-yyyy)
         guard let dateString = req.query[String.self, at: "date"],
-              let date = ISO8601DateFormatter().date(from: dateString)
-        else {
-            throw Abort(.badRequest, reason: "Invalid or missing date parameter.")
+              let date = DateUtils.defaultFormatter.date(from: dateString) else {
+            throw Abort(.badRequest, reason: "Paramètre de date invalide ou manquant")
         }
 
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: date)
-        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        let startOfDay = DateUtils.startOfDay(date)
+        let endOfDay = DateUtils.endOfDay(date)
 
+        // Repas du jour
         let meals = try await Meal.query(on: req.db)
             .filter(\.$user.$id == payload.id)
             .filter(\.$dateMeal >= startOfDay)
             .filter(\.$dateMeal < endOfDay)
             .all()
 
+        // Activités du jour
         let activities = try await Activity.query(on: req.db)
             .filter(\.$user.$id == payload.id)
             .filter(\.$dateActivity >= startOfDay)
@@ -53,26 +54,35 @@ struct HistoryController: RouteCollection {
             totalCaloriesConsumed: totalConsumed,
             totalCaloriesBurned: totalBurned,
             meals: meals.map {
-                DailyMealDTO(id: $0.id!, name: $0.typeMeal, calories: $0.totalCalories, date: $0.dateMeal ?? Date())
+                DailyMealDTO(
+                    id: $0.id!,
+                    name: $0.typeMeal,
+                    calories: $0.totalCalories,
+                    date: $0.dateMeal ?? Date()
+                )
             },
             activities: activities.map {
-                DailyActivityDTO(id: $0.id!, name: $0.activityName, caloriesBurned: $0.caloriesBurned, date: $0.dateActivity)
+                DailyActivityDTO(
+                    id: $0.id!,
+                    name: $0.activityName,
+                    caloriesBurned: $0.caloriesBurned,
+                    date: $0.dateActivity
+                )
             }
         )
     }
 
-    // MARK: - Historique global par mois
+    // MARK: - Historique global du mois
     @Sendable
     func getMonthSummary(req: Request) async throws -> MonthSummaryDTO {
         let payload = try req.auth.require(UserPayload.self)
         let calendar = Calendar.current
 
-        guard
-            let year = req.query[Int.self, at: "year"],
-            let month = req.query[Int.self, at: "month"],
-            (1...12).contains(month)
-        else {
-            throw Abort(.badRequest, reason: "Missing year or month.")
+        // Vérifier year & month
+        guard let year = req.query[Int.self, at: "year"],
+              let month = req.query[Int.self, at: "month"],
+              (1...12).contains(month) else {
+            throw Abort(.badRequest, reason: "Année ou mois manquant ou invalide")
         }
 
         var comp = DateComponents()
@@ -85,12 +95,14 @@ struct HistoryController: RouteCollection {
 
         let daysInMonth = calendar.range(of: .day, in: .month, for: startDate)!.count
 
+        // Repas du mois
         let meals = try await Meal.query(on: req.db)
             .filter(\.$user.$id == payload.id)
             .filter(\.$dateMeal >= startDate)
             .filter(\.$dateMeal < endDate)
             .all()
 
+        // Activités du mois
         let activities = try await Activity.query(on: req.db)
             .filter(\.$user.$id == payload.id)
             .filter(\.$dateActivity >= startDate)
@@ -102,6 +114,7 @@ struct HistoryController: RouteCollection {
         let totalConsumed = meals.map { $0.totalCalories }.reduce(0, +)
         let totalBurned = activities.map { $0.caloriesBurned }.reduce(0, +)
 
+        // Formatage du nom du mois en français
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "fr_FR")
         formatter.dateFormat = "LLLL"

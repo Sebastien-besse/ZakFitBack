@@ -7,18 +7,9 @@
 
 import Vapor
 
-
-import Vapor
-
-// DTO pour créer un meal (entrée utilisateur)
 struct MealDTO: Content {
     var type: String
-    var date: Date? // facultatif, pris par défaut via @Timestamp dans Meal
-}
-
-struct MealFoodInputDTO: Content {
-    var foodID: UUID
-    var quantity: Int
+    var date: Date?
 }
 
 struct MealCreateDTO: Content {
@@ -26,18 +17,6 @@ struct MealCreateDTO: Content {
     var foods: [MealFoodInputDTO]
 }
 
-// DTO pour un aliment dans un repas
-struct MealFoodDTO: Content {
-    var id: UUID
-    var name: String
-    var quantity: Int
-    var calories: Int
-    var proteins: Int
-    var carbs: Int
-    var lipids: Int
-}
-
-// DTO pour la réponse d’un repas complet avec ses aliments
 struct MealResponseDTO: Content {
     var id: UUID
     var type: String
@@ -49,7 +28,6 @@ struct MealResponseDTO: Content {
     var foods: [MealFoodDTO] // liste des aliments
 }
 
-// Extension pour créer le DTO à partir d’un Meal et de ses MealFood
 extension MealResponseDTO {
     init(from meal: Meal, foods: [MealFood]) throws {
         self.id = try meal.requireID()
@@ -60,9 +38,8 @@ extension MealResponseDTO {
         self.totalCarbs = meal.totalCarbs
         self.totalLipids = meal.totalLipids
         
-        // Mapping des MealFood vers MealFoodDTO
         self.foods = try foods.map { mf in
-            let food = mf.food // plus besoin de guard let
+            let food = mf.food
             return MealFoodDTO(
                 id: try food.requireID(),
                 name: food.foodName,

@@ -8,30 +8,41 @@
 import Vapor
 import Fluent
 
-struct MealController:  RouteCollection{
+struct MealController: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
-        // Je regroupe mes routes
+
+        // Je regroupe toutes les routes du module Meal
         let meal = routes.grouped("meal")
         
-        // Groupe de routes nécessitant le middleware JWT
+        // Toutes ces routes nécessitent un utilisateur connecté via JWT
         let protectedRoutes = meal.grouped(JWTMiddleware())
+
+        // Création d’un repas sans aliment
         protectedRoutes.post("create", use: createMeal)
+
+        // Récupération des repas avec filtres
         protectedRoutes.get("meals", use: getMeals)
+
+        // Création d’un repas + ses aliments en une seule requête
         protectedRoutes.post("createwithfood", use: createMealWithFoods)
     }
-    
-    //MARK: Création d'un repas
+
+    //MARK: Création d’un repas simple
     @Sendable
     func createMeal(req: Request) async throws -> MealResponseDTO {
+
+        // Récupération de l'utilisateur connecté via JWT
         let payload = try req.auth.require(UserPayload.self)
 
+        // Récupération des données envoyées par le front
         let data = try req.content.decode(MealDTO.self)
 
-        // Validation simple serveur
+        // Petite validation serveur
         guard !data.type.isEmpty else {
-            throw Abort(.badRequest, reason: "Meal type cannot be empty.")
+            throw Abort(.badRequest, reason: "Le type de repas ne peut pas être vide")
         }
 
+        // Création du repas
         let meal = Meal(
             typeMeal: data.type,
             userID: payload.id
@@ -41,36 +52,33 @@ struct MealController:  RouteCollection{
 
         return MealResponseDTO(from: meal)
     }
-    
-    
-    //MARK: Récuperer les repas de l'utilisateur
+
+    //MARK: Récupérer les repas de l’utilisateur avec les filtres
     @Sendable
     func getMeals(req: Request) async throws -> [MealResponseDTO] {
+
         let payload = try req.auth.require(UserPayload.self)
 
-        // Démarrer la requête filtrée par userID
         var query = Meal.query(on: req.db)
             .filter(\.$user.$id == payload.id)
 
-        // Filtrer par date si fourni (yyyy-MM-dd)
-        if let dateString = req.query[String.self, at: "date"] {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd"
-            if let date = formatter.date(from: dateString) {
-                let calendar = Calendar.current
-                let start = calendar.startOfDay(for: date)
-                let end = calendar.date(byAdding: .day, value: 1, to: start)!
-                query = query.filter(\.$dateMeal >= start)
-                             .filter(\.$dateMeal < end)
-            }
+        // Filtre date via DateUtils
+        if let dateString = req.query[String.self, at: "date"],
+           let date = DateUtils.defaultFormatter.date(from: dateString) {
+
+            let start = DateUtils.startOfDay(date)
+            let end = DateUtils.endOfDay(date)
+
+            query = query.filter(\.$dateMeal >= start)
+                         .filter(\.$dateMeal < end)
         }
 
-        // Filtrer par type de repas si fourni
+        // Filtre type
         if let type = req.query[String.self, at: "type"] {
             query = query.filter(\.$typeMeal == type)
         }
 
-        // Appliquer tri si demandé
+        // Tri
         if let sort = req.query[String.self, at: "sort"] {
             switch sort.lowercased() {
             case "date":
@@ -86,48 +94,57 @@ struct MealController:  RouteCollection{
 
         let meals = try await query.all()
 
-        // Pour chaque repas, récupérer les MealFood associés
         var result: [MealResponseDTO] = []
+
+        // Rendu final
         for meal in meals {
             let mealFoods = try await MealFood.query(on: req.db)
                 .filter(\.$meal.$id == meal.requireID())
                 .with(\.$food)
                 .all()
+
             result.append(try MealResponseDTO(from: meal, foods: mealFoods))
         }
 
         return result
     }
-    
-    
+
+    //MARK: Création d’un repas avec plusieurs aliments
     @Sendable
     func createMealWithFoods(req: Request) async throws -> MealResponseDTO {
+
         let payload = try req.auth.require(UserPayload.self)
         let data = try req.content.decode(MealCreateDTO.self)
 
-        // Validation
+        // Validations basiques
         guard !data.type.isEmpty else {
-            throw Abort(.badRequest, reason: "Meal type cannot be empty.")
+            throw Abort(.badRequest, reason: "Le type de repas ne peut pas être vide.")
         }
         guard !data.foods.isEmpty else {
-            throw Abort(.badRequest, reason: "Meal must contain at least one food.")
+            throw Abort(.badRequest, reason: "Le repas doit contenir au moins un aliment.")
         }
 
-        // Création du repas "vide"
+        // Création du repas vide
         let meal = Meal(typeMeal: data.type, userID: payload.id)
         try await meal.create(on: req.db)
 
+        // Variables pour calculer les nutriments totaux
         var totalCalories = 0
         var totalProteins = 0
         var totalCarbs = 0
         var totalLipids = 0
 
+        // Pour chaque aliment envoyé par le front
         for item in data.foods {
+
+            // Je vérifie que l’aliment existe
             guard let food = try await Food.find(item.foodID, on: req.db) else {
-                throw Abort(.notFound, reason: "Food with ID \(item.foodID) not found.")
+                throw Abort(.notFound, reason: "L’aliment avec l’id \(item.foodID) est introuvable")
             }
 
+            // Calcul du ratio selon la quantité (base = 100g)
             let factor = Double(item.quantity) / 100.0
+
             let cals = Int(Double(food.calories) * factor)
             let prots = Int(Double(food.proteins) * factor)
             let carbs = Int(Double(food.carbs) * factor)
@@ -138,6 +155,7 @@ struct MealController:  RouteCollection{
             totalCarbs += carbs
             totalLipids += lipids
 
+            // Création de l’association MealFood
             let mealFood = MealFood(
                 quantityConsumed: item.quantity,
                 caloriesCalculated: cals,
@@ -147,16 +165,19 @@ struct MealController:  RouteCollection{
                 mealID: try meal.requireID(),
                 foodID: try food.requireID()
             )
+
             try await mealFood.create(on: req.db)
         }
 
+        // Mise à jour des totaux dans le repas
         meal.totalCalories = totalCalories
         meal.totalProteins = totalProteins
         meal.totalCarbs = totalCarbs
         meal.totalLipids = totalLipids
+
         try await meal.update(on: req.db)
 
-        //Récupérer tous les MealFood liés pour le DTO
+        // Je recharge les MealFood pour renvoyer un DTO complet
         let mealFoods = try await MealFood.query(on: req.db)
             .filter(\.$meal.$id == meal.requireID())
             .with(\.$food)
@@ -164,5 +185,4 @@ struct MealController:  RouteCollection{
 
         return try MealResponseDTO(from: meal, foods: mealFoods)
     }
-    
 }

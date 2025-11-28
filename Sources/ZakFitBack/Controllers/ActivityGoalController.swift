@@ -52,17 +52,18 @@ struct ActivityGoalController: RouteCollection {
     func updateActivityGoal(req: Request) async throws -> ActivityGoalResponseDTO {
         let payload = try req.auth.require(UserPayload.self)
         guard let goalID = req.parameters.get("id", as: UUID.self) else {
-            throw Abort(.badRequest, reason: "Invalid goal ID")
+            throw Abort(.badRequest, reason: "L'id de l'objectif est invalide")
         }
         
         guard let goal = try await ActivityGoal.find(goalID, on: req.db) else {
-            throw Abort(.notFound, reason: "Goal not found")
+            throw Abort(.notFound, reason: "Objectif non trouvé")
         }
         
         guard goal.$user.id == payload.id else {
-            throw Abort(.forbidden, reason: "Cannot modify another user's goal")
+            throw Abort(.forbidden, reason: "Ne peut pas modifier l’objectif d’un autre utilisateur")
         }
         
+        // Décodage du body JSON envoyé côté client
         let data = try req.content.decode(ActivityGoalDTO.self)
         
         goal.typeActivity = data.typeActivity
@@ -70,6 +71,7 @@ struct ActivityGoalController: RouteCollection {
         goal.caloriesBurned = data.caloriesBurned
         goal.durationOfSessions = data.durationOfSessions
         
+        //Sauvegarde des modifications
         try await goal.update(on: req.db)
         return try ActivityGoalResponseDTO(from: goal)
     }
