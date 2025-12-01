@@ -52,7 +52,7 @@ struct UserController: RouteCollection{
         try await userDTO.create(on: req.db)
         
         // Je retourne un model contenant les données utilisateur
-        return UserResponse(firstname: userDTO.firstname, lastname: userDTO.lastname, email: userDTO.email, dateOfBirth: userDTO.dateOfBirth, height: userDTO.height, weight: userDTO.weight, objectifHealth: userDTO.objectifHealth, diet: userDTO.diet)
+        return UserResponse(firstname: userDTO.firstname, lastname: userDTO.lastname, email: userDTO.email, dateOfBirth: userDTO.dateOfBirth,gender: userDTO.gender, height: userDTO.height, weight: userDTO.weight, objectifHealth: userDTO.objectifHealth, diet: userDTO.diet)
         
     }
     

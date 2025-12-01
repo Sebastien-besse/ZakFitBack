@@ -12,6 +12,7 @@ struct UserDTO: Content{
     var lastname: String
     var email: String
     var dateOfBirth: Date
+    var gender: String
     var height: Int
     var weight: Int
     var objectifHealth: String
@@ -19,7 +20,7 @@ struct UserDTO: Content{
     var password: String
     
     func toModel() -> User{
-        User(firstname: firstname, lastname: lastname, email: email, dateOfBirth: dateOfBirth, password: password, weight: weight, height: height, objectifHealth: objectifHealth, diet: diet)
+        User(firstname: firstname, lastname: lastname, email: email, dateOfBirth: dateOfBirth, gender: gender, password: password, weight: weight, height: height, objectifHealth: objectifHealth, diet: diet)
     }
 }
 
@@ -33,6 +34,7 @@ struct UserResponse: Content{
     var lastname: String
     var email: String
     var dateOfBirth: Date
+    var gender: String
     var height: Int
     var weight: Int
     var objectifHealth: String
@@ -46,6 +48,7 @@ extension UserResponse{
         self.lastname = user.lastname
         self.email = user.email
         self.dateOfBirth = user.dateOfBirth
+        self.gender = user.gender
         self.height = user.height
         self.weight = user.weight
         self.objectifHealth = user.objectifHealth

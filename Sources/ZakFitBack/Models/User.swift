@@ -29,6 +29,9 @@ final class User: Model, Content, @unchecked Sendable{
     @Field(key: "date_of_birth")
     var dateOfBirth: Date
     
+    @Field(key: "gender")
+    var gender: String
+    
     @Field(key: "password")
     var password: String
     
@@ -55,12 +58,13 @@ final class User: Model, Content, @unchecked Sendable{
     // Constructeur
     init() {}
     
-    init(id: UUID? = nil, firstname: String, lastname: String, email: String, dateOfBirth: Date, password: String, weight: Int, height: Int, objectifHealth: String, diet: String) {
+    init(id: UUID? = nil, firstname: String, lastname: String, email: String, dateOfBirth: Date, gender: String, password: String, weight: Int, height: Int, objectifHealth: String, diet: String) {
         self.id = id
         self.firstname = firstname
         self.lastname = lastname
         self.email = email
         self.dateOfBirth = dateOfBirth
+        self.gender = gender
         self.password = password
         self.weight = weight
         self.height = height
