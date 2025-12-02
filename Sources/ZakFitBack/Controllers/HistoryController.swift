@@ -44,7 +44,9 @@ struct HistoryController: RouteCollection {
             .filter(\.$user.$id == payload.id)
             .filter(\.$dateActivity >= startOfDay)
             .filter(\.$dateActivity < endOfDay)
+            .with(\.$exercise) // <- IMPORTANT
             .all()
+
 
         let totalConsumed = meals.map { $0.totalCalories }.reduce(0, +)
         let totalBurned = activities.map { $0.caloriesBurned }.reduce(0, +)
@@ -64,11 +66,12 @@ struct HistoryController: RouteCollection {
             activities: activities.map {
                 DailyActivityDTO(
                     id: $0.id!,
-                    name: $0.activityName,
+                    name: $0.$exercise.value!.name,
                     caloriesBurned: $0.caloriesBurned,
                     date: $0.dateActivity
                 )
             }
+
         )
     }
 

@@ -7,54 +7,55 @@
 
 import Vapor
 
+// DTO pour créer une activité
 struct ActivityDTO: Content {
-    var type: String
+    var exerciseID: UUID
     var duration: Int
     var caloriesBurned: Int?
     var date: Date?
-    
-    func estimatedCalories() -> Int {
-        switch type.lowercased() {
-        case "cardio": return duration * 8
-        case "musculation": return duration * 6
-        case "yoga": return duration * 4
-        case "marche": return duration * 3
-        default: return duration * 5
-        }
-    }
-    
-    func toModel(userID: UUID) -> Activity {
-        Activity(
-            activityName: type,
-            dureActivity: duration,
-            caloriesBurned: caloriesBurned ?? estimatedCalories(),
-            dateActivity: date ?? Date(),
+
+    func toModel(exercise: Exercise, userID: UUID) -> Activity {
+        let calories = caloriesBurned ?? (exercise.defaultCaloriesPerMin ?? 5) * duration
+        return Activity(
+            exerciseID: exercise.id!,
+            duration: duration,
+            caloriesBurned: calories,
+            date: date ?? Date(),
             userID: userID
         )
     }
 }
 
+// DTO pour mettre à jour une activité
 struct UpdateActivityDTO: Content {
-    var type: String?
+    var exerciseID: UUID?
     var duration: Int?
     var caloriesBurned: Int?
     var date: Date?
 }
 
-struct ActivityResponse: Content{
+// DTO pour la réponse côté front
+struct ActivityResponse: Content {
     var id: UUID?
-    var type: String
+    var exerciseName: String
+    var activityType: String
     var duration: Int
     var calories: Int
     var date: Date
+    var motivationMessage: String?   // 👈 NOUVEAU
 }
+
 extension ActivityResponse {
-    init(from activity: Activity) throws {
-        self.id = try activity.requireID()
-        self.type = activity.activityName
-        self.duration = activity.dureActivity
+    init(from activity: Activity, exercise: Exercise) {
+        self.id = activity.id
+        self.exerciseName = exercise.name
+        self.activityType = exercise.type
+        self.duration = activity.duration
         self.calories = activity.caloriesBurned
         self.date = activity.dateActivity
+        self.motivationMessage = exercise.motivationMessage   // 👈 NOUVEAU
     }
 }
+
+
 
