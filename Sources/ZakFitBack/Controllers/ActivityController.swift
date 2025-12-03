@@ -18,9 +18,10 @@ struct ActivityController: RouteCollection {
         protectedRoutes.get("activities", use: getActivities)
         protectedRoutes.put("update",":id", use: updateActivity)
         protectedRoutes.delete("delete", ":id", use: deleteActivity)
+        protectedRoutes.get("exercises", use: getAllExercises)
     }
 
-    // MARK: Créer une activité
+    // MARK: - Créer une activité
     @Sendable
     func createActivity(req: Request) async throws -> ActivityResponse {
         let payload = try req.auth.require(UserPayload.self)
@@ -39,7 +40,7 @@ struct ActivityController: RouteCollection {
         return ActivityResponse(from: activity, exercise: exercise)
     }
 
-    // MARK: Récupérer toutes les activités de l'utilisateur
+    // MARK: - Récupérer toutes les activités de l'utilisateur
     @Sendable
     func getActivities(req: Request) async throws -> [ActivityResponse] {
         let payload = try req.auth.require(UserPayload.self)
@@ -51,7 +52,22 @@ struct ActivityController: RouteCollection {
         return activities.map { ActivityResponse(from: $0, exercise: $0.$exercise.value!) }
     }
 
-    // MARK: Mettre à jour une activité
+    // MARK: - Endpoint public pour récupérer tous les exercices
+    func getAllExercises(req: Request) async throws -> [ExerciseDTO] {
+        let exos = try await Exercise.query(on: req.db).all()
+        return exos.compactMap { ex in
+            guard let id = ex.id else { return nil }
+            return ExerciseDTO(
+                id: id,
+                name: ex.name,
+                type: ex.type,
+                defaultCaloriesPerMin: ex.defaultCaloriesPerMin ?? 5,
+                motivationMessage: ex.motivationMessage
+            )
+        }
+    }
+
+    // MARK: - Mettre à jour une activité
     @Sendable
     func updateActivity(req: Request) async throws -> ActivityResponse {
         let payload = try req.auth.require(UserPayload.self)
@@ -90,7 +106,7 @@ struct ActivityController: RouteCollection {
         return ActivityResponse(from: activity, exercise: exercise!)
     }
 
-    // MARK: Supprimer une activité
+    // MARK: - Supprimer une activité
     @Sendable
     func deleteActivity(req: Request) async throws -> HTTPStatus {
         let payload = try req.auth.require(UserPayload.self)

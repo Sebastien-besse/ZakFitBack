@@ -42,7 +42,7 @@ struct ActivityResponse: Content {
     var duration: Int
     var calories: Int
     var date: Date
-    var motivationMessage: String?   // 👈 NOUVEAU
+    var motivationMessage: String  // 👈 NOUVEAU
 }
 
 extension ActivityResponse {
@@ -53,9 +53,15 @@ extension ActivityResponse {
         self.duration = activity.duration
         self.calories = activity.caloriesBurned
         self.date = activity.dateActivity
-        self.motivationMessage = exercise.motivationMessage   // 👈 NOUVEAU
+        self.motivationMessage = exercise.motivationMessage
     }
 }
 
 
-
+struct ExerciseDTO: Content {
+    var id: UUID
+    var name: String
+    var type: String
+    var defaultCaloriesPerMin: Int
+    var motivationMessage: String
+}

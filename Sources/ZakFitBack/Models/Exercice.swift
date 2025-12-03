@@ -24,11 +24,11 @@ final class Exercise: Model, Content, @unchecked Sendable {
     var defaultCaloriesPerMin: Int?
 
     @Field(key: "motivation_message")
-    var motivationMessage: String?   // 👈 NOUVEAU
+    var motivationMessage: String
 
     init() {}
 
-    init(id: UUID? = nil, name: String, type: String, defaultCaloriesPerMin: Int?, motivationMessage: String? = nil) {
+    init(id: UUID? = nil, name: String, type: String, defaultCaloriesPerMin: Int?, motivationMessage: String) {
         self.id = id
         self.name = name
         self.type = type
