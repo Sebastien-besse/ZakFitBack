@@ -16,6 +16,22 @@ public func configure(_ app: Application) async throws {
         database: Environment.get("DATABASE_NAME") ?? "zakfit_db"
     ), as: .mysql)
     
+    // Ajout de CORS
+    let corsConfiguration = CORSMiddleware.Configuration(
+        allowedOrigin: .all,
+        allowedMethods: [.GET, .POST, .PUT, .PATCH, .DELETE, .OPTIONS],
+        allowedHeaders: [
+            .accept,
+            .authorization,
+            .contentType,
+            .origin,
+            .xRequestedWith,
+            .userAgent,
+            .accessControlAllowOrigin
+        ]
+    )
+    let corsMiddleware = CORSMiddleware(configuration: corsConfiguration)
+      app.middleware.use(corsMiddleware)
     
     let jsonDecoder = JSONDecoder()
     jsonDecoder.dateDecodingStrategy = .formatted(DateUtils.defaultFormatter)
